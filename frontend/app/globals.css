@@ -1,0 +1,50 @@
+:root {
+  --ah-blue: #003d9b;
+  --ah-blue-dark: #002d75;
+}
+
+.btn-ah {
+  background-color: var(--ah-blue);
+  border-color: var(--ah-blue);
+  color: #fff;
+}
+.btn-ah:hover,
+.btn-ah:focus {
+  background-color: var(--ah-blue-dark);
+  border-color: var(--ah-blue-dark);
+  color: #fff;
+}
+
+.navbar-ah {
+  background-color: var(--ah-blue);
+}
+
+.nav-link-ah {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+.nav-link-ah:hover,
+.nav-link-ah.active {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 0.375rem;
+}
+
+/* Dropdown toggle inherits navbar text color */
+.navbar-ah .dropdown-toggle::after {
+  border-top-color: rgba(255, 255, 255, 0.85);
+}
+.navbar-ah .dropdown-menu {
+  background-color: var(--ah-blue-dark);
+  border: none;
+  border-radius: 0.375rem;
+  margin-top: 0.25rem;
+}
+.navbar-ah .dropdown-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+.navbar-ah .dropdown-item:hover,
+.navbar-ah .dropdown-item:focus,
+.navbar-ah .dropdown-item.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}

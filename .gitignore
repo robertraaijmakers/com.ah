@@ -1,0 +1,10 @@
+.env
+secrets/
+*.pyc
+__pycache__/
+.venv/
+node_modules/
+.next/
+*.egg-info/
+dist/
+.DS_Store

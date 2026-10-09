@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: comah
+      POSTGRES_USER: comah
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "0.0.0.0:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U comah"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://comah:${DB_PASSWORD}@db:5432/comah
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:14b}
+    volumes:
+      - ./secrets:/app/secrets:rw
+    ports:
+      - "0.0.0.0:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scraper:
+    build: ./scraper
+    environment:
+      DATABASE_URL: postgresql+asyncpg://comah:${DB_PASSWORD}@db:5432/comah
+      PRODUCTS_CRON: ${PRODUCTS_CRON:-0 6 * * *}
+      BONUS_CRON: ${BONUS_CRON:-0 8 * * 4}
+      ORDERS_CRON: ${ORDERS_CRON:-0 7 * * 1}
+    volumes:
+      - ./secrets:/app/secrets:rw
+      - scraper_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "0.0.0.0:3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  scraper_data:

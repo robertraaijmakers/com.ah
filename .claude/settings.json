@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k\\) for k in d['paths'] if 'scrap' in k.lower\\(\\) or 'trigger' in k.lower\\(\\)]\")",
+      "Bash(curl -s -X POST http://localhost:8000/scraper/trigger)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s \"http://localhost:8000/products/?q=tomatenblokjes&limit=5\")",
+      "Bash(curl -sv \"http://localhost:8000/products/?q=tomatenblokjes&limit=5\")",
+      "Bash(curl -s \"http://localhost:8000/products/?q=tomaten&limit=3\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s \"http://localhost:8000/products/?q=optimel+drinkyoghurt&limit=10\")",
+      "Bash(cat \"$HOME/Library/Application Support/rtk/tee/1788370625_tsc.log\" | rtk grep -v \"^npm\\\\|^$\")",
+      "Read(//Users/rraaijmakers/Library/Application Support/rtk/tee/**)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(echo \"TS EXIT: $?\")",
+      "Bash(docker compose *)",
+      "Bash(rtk docker exec comah-db-1 psql -U comah -d comah -c ' *)",
+      "Bash(rtk docker *)",
+      "Bash(curl -s http://localhost:8000/scraper/orders-preview)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/scraper/auth/status)",
+      "Bash(rtk docker exec comah-scraper-1 python3 -c ' *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(rtk curl *)",
+      "Bash(curl -s https://api.github.com/repos/gwillem/appie-go/contents/)",
+      "Bash(python3 -c \"import sys,json; [print\\(f['name']\\) for f in json.load\\(sys.stdin\\) if f['type']=='file']\")",
+      "Bash(curl -s http://localhost:8001/trigger/orders-preview)",
+      "Bash(curl -s http://localhost:8000/api/scraper/orders-preview)"
+    ]
+  }
+}
