@@ -1,4 +1,5 @@
 import json
+import os
 import httpx
 from pathlib import Path
 from datetime import datetime, timezone
@@ -74,6 +75,7 @@ async def auth_callback(body: CallbackRequest):
     }
     TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
     TOKENS_FILE.write_text(json.dumps(tokens, indent=2))
+    os.chmod(TOKENS_FILE, 0o600)
     return {"ok": True, "expires_at": tokens["expires_at"]}
 
 

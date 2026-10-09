@@ -1,4 +1,5 @@
 import json
+import os
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,7 @@ def _load_tokens() -> dict:
 def _save_tokens(tokens: dict) -> None:
     TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
     TOKENS_FILE.write_text(json.dumps(tokens, indent=2))
+    os.chmod(TOKENS_FILE, 0o600)
 
 
 def _is_expired(tokens: dict) -> bool:
