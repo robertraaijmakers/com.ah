@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import Alert from "react-bootstrap/Alert";
 import Badge from "react-bootstrap/Badge";
@@ -12,75 +12,11 @@ import Row from "react-bootstrap/Row";
 import Spinner from "react-bootstrap/Spinner";
 import { api, type MealPlan, type MealPlanDay, type FamilyMember, type Meal } from "@/lib/api";
 import { useToast } from "@/lib/toast";
+import { PLANS_KEY, TYPE_COLOR, WEEKDAYS_NL, sortMembers } from "@/lib/plans";
+import { MemberChip } from "@/components/plans/MemberChip";
+import { NewPlanForm } from "@/components/plans/NewPlanForm";
 
-const PLANS_KEY = "/plans/";
 
-// Order Monday, delivery Tuesday night → cycle Wed–Tue.
-// If today is Sun or Mon, planning is for the NEXT cycle (next Wednesday).
-// Otherwise plan from this (most recent) Wednesday.
-function defaultStartDate(): string {
-  const today = new Date();
-  const dow = today.getDay(); // 0=Sun,1=Mon,...,6=Sat
-  let offset: number;
-  if (dow === 0) offset = 3;          // Sun → +3 (next Wed)
-  else if (dow === 1) offset = 2;     // Mon → +2 (next Wed)
-  else if (dow === 2) offset = -6;    // Tue → last Wed (current cycle end)
-  else offset = 3 - dow;             // Wed=0, Thu=-1, Fri=-2, Sat=-3
-  const d = new Date(today);
-  d.setDate(today.getDate() + offset);
-  return d.toISOString().slice(0, 10);
-}
-
-function defaultPlanName(startIso: string): string {
-  const start = new Date(startIso + "T12:00:00");
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  const fmtShort = (d: Date) =>
-    d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-  return `Week ${fmtShort(start)} – ${fmtShort(end)}`;
-}
-
-const WEEKDAYS_NL = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-
-const TYPE_COLOR: Record<FamilyMember["member_type"], string> = {
-  member: "primary",
-  regular_guest: "info",
-  generic_guest: "secondary",
-};
-
-const TYPE_ORDER: Record<FamilyMember["member_type"], number> = {
-  member: 0,
-  regular_guest: 1,
-  generic_guest: 2,
-};
-
-function sortMembers(members: FamilyMember[]): FamilyMember[] {
-  return [...members].sort((a, b) => TYPE_ORDER[a.member_type] - TYPE_ORDER[b.member_type] || a.name.localeCompare(b.name));
-}
-
-function MemberChip({
-  member,
-  active,
-  onClick,
-}: {
-  member: FamilyMember;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const color = TYPE_COLOR[member.member_type];
-  return (
-    <Badge
-      bg={active ? color : "light"}
-      text={active ? "white" : "muted"}
-      className="border fw-normal"
-      style={{ fontSize: "0.65rem", cursor: "pointer", userSelect: "none" }}
-      onClick={onClick}
-      title={member.member_type === "generic_guest" ? "Anonieme gast" : member.member_type === "regular_guest" ? "Vaste gast" : ""}
-    >
-      {member.name}
-    </Badge>
-  );
-}
 
 export default function PlansPage() {
   const { showToast } = useToast();
@@ -90,54 +26,6 @@ export default function PlansPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const startDefault = defaultStartDate();
-  const [startDate, setStartDate] = useState(startDefault);
-  const [days, setDays] = useState(7);
-  // perDayPersons: array of sets (one per day). Initialized lazily when members load.
-  const [perDayPersons, setPerDayPersons] = useState<number[][]>([]);
-  const [meatDays, setMeatDays] = useState(3);
-  const [budget, setBudget] = useState("");
-  const [planName, setPlanName] = useState(defaultPlanName(startDefault));
-
-  // Initialize perDayPersons only when members first load (not on every days/startDate change)
-  useEffect(() => {
-    if (!members) return;
-    const defaultIds = members.filter((m) => m.member_type === "member").map((m) => m.id);
-    setPerDayPersons((prev) => {
-      if (prev.length === 0) return Array.from({ length: days }, () => [...defaultIds]);
-      // Resize: add new days with defaults, trim extra
-      if (prev.length === days) return prev;
-      const resized = [...prev];
-      while (resized.length < days) resized.push([...defaultIds]);
-      return resized.slice(0, days);
-    });
-  }, [members, days]);
-
-  function togglePersonOnFormDay(dayIdx: number, memberId: number) {
-    setPerDayPersons((prev) => {
-      const next = [...prev];
-      const cur = next[dayIdx] ?? [];
-      next[dayIdx] = cur.includes(memberId) ? cur.filter((id) => id !== memberId) : [...cur, memberId];
-      return next;
-    });
-  }
-
-  function togglePersonAllDays(memberId: number, forceOn?: boolean) {
-    setPerDayPersons((prev) =>
-      prev.map((dayIds) => {
-        const on = forceOn ?? !dayIds.includes(memberId);
-        return on ? [...new Set([...dayIds, memberId])] : dayIds.filter((id) => id !== memberId);
-      })
-    );
-  }
-
-  function setAllDays(memberIds: number[]) {
-    setPerDayPersons(Array.from({ length: days }, () => [...memberIds]));
-  }
-
   // Edit mode state for existing plans
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -202,37 +90,7 @@ export default function PlansPage() {
     }
   }
 
-  // Update plan name when start date changes
-  useEffect(() => {
-    setPlanName(defaultPlanName(startDate));
-  }, [startDate]);
-
   const activePlan = plans?.find((p) => p.id === (selectedPlanId ?? plans[0]?.id));
-
-  async function generate() {
-    setGenerating(true);
-    setFormError(null);
-    try {
-      const allPersonIds = [...new Set(perDayPersons.flat())];
-      const plan = await api.post<MealPlan>("/plans/generate", {
-        start_date: startDate,
-        days,
-        person_ids: allPersonIds,
-        per_day_persons: perDayPersons,
-        meat_days: meatDays,
-        budget_eur: budget ? parseFloat(budget) : null,
-        name: planName || null,
-      });
-      await mutate(PLANS_KEY);
-      setSelectedPlanId(plan.id);
-      setShowForm(false);
-      showToast("Plan aangemaakt", "success");
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Genereren mislukt");
-    } finally {
-      setGenerating(false);
-    }
-  }
 
   async function deletePlan(plan: MealPlan) {
     if (!confirm(`"${plan.name || `Plan ${plan.id}`}" en bijbehorende boodschappenlijsten verwijderen?`)) return;
@@ -298,125 +156,12 @@ export default function PlansPage() {
 
       {error && <Alert variant="danger">Kon plannen niet laden: {error.message}</Alert>}
 
-      {showForm && (
-        <Card className="shadow-sm mb-4">
-          <Card.Body>
-            <Card.Title className="h6">Plan genereren</Card.Title>
-            {formError && <Alert variant="danger" onClose={() => setFormError(null)} dismissible>{formError}</Alert>}
-            <Row className="g-2 mb-3">
-              <Col xs={12} sm={6}>
-                <Form.Label className="small">Naam</Form.Label>
-                <Form.Control size="sm" placeholder="Week …" value={planName} onChange={(e) => setPlanName(e.target.value)} />
-              </Col>
-              <Col xs={12} sm={6}>
-                <Form.Label className="small">Startdatum (woensdag)</Form.Label>
-                <Form.Control
-                  type="date"
-                  size="sm"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </Col>
-              <Col xs={6} sm={4}>
-                <Form.Label className="small">Aantal dagen</Form.Label>
-                <Form.Control type="number" size="sm" min={1} max={14} value={days} onChange={(e) => setDays(Number(e.target.value))} />
-              </Col>
-              <Col xs={6} sm={4}>
-                <Form.Label className="small">Vleesdagen</Form.Label>
-                <Form.Control type="number" size="sm" min={0} max={days} value={meatDays} onChange={(e) => setMeatDays(Number(e.target.value))} />
-              </Col>
-              <Col xs={12} sm={4}>
-                <Form.Label className="small">Budget (€)</Form.Label>
-                <Form.Control type="number" size="sm" placeholder="100" value={budget} onChange={(e) => setBudget(e.target.value)} />
-              </Col>
-            </Row>
-            {members && members.length > 0 && perDayPersons.length === days && (
-              <Form.Group className="mb-3">
-                <div className="d-flex align-items-center gap-3 mb-2">
-                  <Form.Label className="small mb-0">Aanwezigen per dag</Form.Label>
-                  <div className="d-flex gap-1">
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                      onClick={() => setAllDays(members.filter((m) => m.member_type === "member").map((m) => m.id))}
-                    >
-                      Gezin alle dagen
-                    </Button>
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                      onClick={() => setAllDays(members.map((m) => m.id))}
-                    >
-                      Iedereen alle dagen
-                    </Button>
-                  </div>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table className="table table-sm table-bordered mb-0" style={{ fontSize: "0.78rem", minWidth: 320 }}>
-                    <thead>
-                      <tr>
-                        <th className="fw-normal text-muted" style={{ width: 90 }}>Dag</th>
-                        {sortMembers(members).map((m) => {
-                          const allOn = perDayPersons.every((dp) => dp.includes(m.id));
-                          return (
-                            <th
-                              key={m.id}
-                              className="text-center fw-normal"
-                              style={{ minWidth: 56, cursor: "pointer", userSelect: "none" }}
-                              onClick={() => togglePersonAllDays(m.id, !allOn)}
-                              title={allOn ? `${m.name} alle dagen uitschakelen` : `${m.name} alle dagen inschakelen`}
-                            >
-                              <span className={`badge bg-${TYPE_COLOR[m.member_type]} fw-normal`} style={{ fontSize: "0.6rem" }}>
-                                {m.name}
-                              </span>
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({ length: days }, (_, i) => {
-                        const d = new Date(startDate + "T12:00:00");
-                        d.setDate(d.getDate() + i);
-                        const dayPersons = perDayPersons[i] ?? [];
-                        return (
-                          <tr key={i}>
-                            <td className="text-capitalize fw-medium" style={{ whiteSpace: "nowrap" }}>
-                              {WEEKDAYS_NL[d.getDay()]} {d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                            </td>
-                            {sortMembers(members).map((m) => {
-                              const active = dayPersons.includes(m.id);
-                              return (
-                                <td
-                                  key={m.id}
-                                  className="text-center"
-                                  style={{ cursor: "pointer", background: active ? "#e8f5e9" : undefined }}
-                                  onClick={() => togglePersonOnFormDay(i, m.id)}
-                                  title={active ? `${m.name} verwijderen` : `${m.name} toevoegen`}
-                                >
-                                  {active ? "✓" : <span className="text-muted">–</span>}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </Form.Group>
-            )}
-            <div className="d-flex gap-2">
-              <Button className="btn-ah" onClick={generate} disabled={generating}>
-                {generating && <Spinner size="sm" className="me-1" />}
-                Genereer plan
-              </Button>
-              <Button variant="outline-secondary" onClick={() => setShowForm(false)}>Annuleer</Button>
-            </div>
-          </Card.Body>
-        </Card>
+      {showForm && members && (
+        <NewPlanForm
+          members={members}
+          onCancel={() => setShowForm(false)}
+          onCreated={(id) => { setSelectedPlanId(id); setShowForm(false); }}
+        />
       )}
 
       <Row className="g-3">
