@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
                     </div>
                   )}
                   <div className="mt-3 pt-3 border-top">
-                    <Table size="sm" className="mb-0">
+                    <Table responsive size="sm" className="mb-0">
                       <thead className="table-light">
                         <tr>
                           <th>{PERIOD_LABELS[period]}</th>
@@ -233,7 +233,7 @@ export default function AnalyticsPage() {
                       color="#003d9b"
                     />
                     <div className="mt-3 overflow-auto" style={{ maxHeight: 260 }}>
-                      <Table size="sm" className="mb-0">
+                      <Table responsive size="sm" className="mb-0">
                         <thead className="table-light">
                           <tr>
                             <th>{PERIOD_LABELS[period]}</th>
@@ -351,7 +351,7 @@ export default function AnalyticsPage() {
                 <Alert variant="info" className="m-3 mb-0">Geen producten gevonden voor deze periode.</Alert>
               )}
               {products.length > 0 && (
-                <Table size="sm" hover className="mb-0">
+                <Table responsive size="sm" hover className="mb-0">
                   <thead className="table-light">
                     <tr>
                       <th className="ps-3">#</th>

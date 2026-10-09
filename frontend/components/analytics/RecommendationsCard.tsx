@@ -54,7 +54,7 @@ export function RecommendationsCard({ rangeParams }: { rangeParams: { start?: st
                         <span className="small text-muted">Binnen {recs.planning_horizon_days} dagen op</span>
                         <span className="ms-auto small fw-medium">Geschat: {euro(recs.estimated_total)}</span>
                       </div>
-                      <Table size="sm" hover className="mb-0">
+                      <Table responsive size="sm" hover className="mb-0">
                         <thead className="table-light">
                           <tr>
                             <th>Product</th>
@@ -86,7 +86,7 @@ export function RecommendationsCard({ rangeParams }: { rangeParams: { start?: st
                         <Badge bg="warning" text="dark">Bijna op</Badge>
                         <span className="small text-muted">Binnen {recs.planning_horizon_days * 2} dagen</span>
                       </div>
-                      <Table size="sm" hover className="mb-0">
+                      <Table responsive size="sm" hover className="mb-0">
                         <thead className="table-light">
                           <tr>
                             <th>Product</th>

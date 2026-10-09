@@ -142,8 +142,8 @@ function ShoppingContent() {
         </Alert>
       )}
 
-      <Form onSubmit={addItem} className="d-flex gap-2 mb-3 d-print-none" aria-label="Item toevoegen">
-        <Form.Control aria-label="Naam" placeholder="Extra item toevoegen (bijv. melk)" value={newName} onChange={(e) => setNewName(e.target.value)} />
+      <Form onSubmit={addItem} className="d-flex flex-wrap gap-2 mb-3 d-print-none" aria-label="Item toevoegen">
+        <Form.Control aria-label="Naam" className="flex-grow-1" style={{ minWidth: 200 }} placeholder="Extra item toevoegen (bijv. melk)" value={newName} onChange={(e) => setNewName(e.target.value)} />
         <Form.Control aria-label="Hoeveelheid" style={{ maxWidth: 80 }} inputMode="decimal" value={newQty} onChange={(e) => setNewQty(e.target.value)} />
         <Form.Control aria-label="Eenheid" style={{ maxWidth: 100 }} value={newUnit} onChange={(e) => setNewUnit(e.target.value)} />
         <Button type="submit" className="btn-ah" disabled={adding || !newName.trim()}>Toevoegen</Button>

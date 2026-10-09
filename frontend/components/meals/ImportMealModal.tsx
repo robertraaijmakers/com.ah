@@ -36,7 +36,7 @@ export function ImportMealModal({ onClose, onImported }: { onClose: () => void; 
   }
 
   return (
-    <Modal show onHide={onClose} size="lg">
+    <Modal fullscreen="sm-down" show onHide={onClose} size="lg">
       <Modal.Header closeButton>
         <Modal.Title className="h5">Recept importeren</Modal.Title>
       </Modal.Header>

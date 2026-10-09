@@ -188,7 +188,7 @@ export default function PantryPage() {
         </ListGroup>
       </Card>
 
-      <Modal show={!!editing} onHide={() => setEditing(null)} centered>
+      <Modal fullscreen="sm-down" show={!!editing} onHide={() => setEditing(null)} centered>
         <Modal.Header closeButton><Modal.Title className="h6">{editing?.product.name}</Modal.Title></Modal.Header>
         <Modal.Body className="d-flex flex-column gap-3">
           <div className="d-flex gap-2">

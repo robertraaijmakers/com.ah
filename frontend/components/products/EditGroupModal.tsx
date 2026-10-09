@@ -38,7 +38,7 @@ export function EditGroupModal({
   }
 
   return (
-    <Modal show onHide={onClose} size="sm">
+    <Modal fullscreen="sm-down" show onHide={onClose} size="sm">
       <Modal.Header closeButton>
         <Modal.Title className="h6">Groep aanpassen</Modal.Title>
       </Modal.Header>

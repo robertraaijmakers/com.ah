@@ -46,7 +46,7 @@ function EditNameEnModal({
   }
 
   return (
-    <Modal show onHide={onClose} size="sm">
+    <Modal fullscreen="sm-down" show onHide={onClose} size="sm">
       <Modal.Header closeButton>
         <Modal.Title className="h6">Engelse naam</Modal.Title>
       </Modal.Header>
@@ -378,7 +378,7 @@ function EditGroupModal({
   }
 
   return (
-    <Modal show onHide={onClose} size="sm">
+    <Modal fullscreen="sm-down" show onHide={onClose} size="sm">
       <Modal.Header closeButton>
         <Modal.Title className="h6">Groep aanpassen</Modal.Title>
       </Modal.Header>
@@ -429,7 +429,7 @@ function VariantsSection({ currentId, variants }: { currentId: number; variants:
           <span className="text-muted small">gesorteerd op prijs per eenheid</span>
         </Card.Header>
         <div style={{ overflowX: "auto" }}>
-          <Table size="sm" className="mb-0" hover>
+          <Table responsive size="sm" className="mb-0" hover>
             <thead className="table-light">
               <tr>
                 <th></th>

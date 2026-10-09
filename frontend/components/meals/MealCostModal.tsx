@@ -10,7 +10,7 @@ export function MealCostModal({ mealId, mealName, onClose }: { mealId: number; m
   const { data, error } = useSWR(`/meals/${mealId}/cost`, (u: string) => api.get<MealCost>(u));
 
   return (
-    <Modal show onHide={onClose} centered size="lg" scrollable>
+    <Modal fullscreen="sm-down" show onHide={onClose} centered size="lg" scrollable>
       <Modal.Header closeButton>
         <Modal.Title className="h6">Kosten: {mealName}</Modal.Title>
       </Modal.Header>
@@ -25,7 +25,7 @@ export function MealCostModal({ mealId, mealName, onClose }: { mealId: number; m
               {data.per_portion != null && <span className="text-muted"> · {fmtEur(data.per_portion)} p.p.</span>}
             </p>
             <div className="table-responsive">
-              <Table size="sm" className="align-middle mb-2">
+              <Table responsive size="sm" className="align-middle mb-2">
                 <thead>
                   <tr><th>Ingrediënt</th><th className="text-end">Hoeveelheid</th><th className="text-end">Kosten</th></tr>
                 </thead>

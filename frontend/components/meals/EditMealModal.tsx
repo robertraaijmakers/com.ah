@@ -84,7 +84,7 @@ export function EditMealModal({ meal, onClose, onSaved, onMealChanged }: {
   const unlinked = ingredients.filter((i) => !i.linked_product && !i.skip_linking).length;
 
   return (
-    <Modal show onHide={onClose} size="xl" scrollable>
+    <Modal fullscreen="sm-down" show onHide={onClose} size="xl" scrollable>
       <Modal.Header closeButton>
         <div className="w-100 me-3">
           <Form.Control

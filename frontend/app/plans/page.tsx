@@ -197,9 +197,9 @@ export default function PlansPage() {
         {activePlan && (
           <Col xs={12} md={9}>
             <Card className="shadow-sm">
-              <Card.Header className="d-flex justify-content-between align-items-center bg-white">
+              <Card.Header className="d-flex justify-content-between align-items-center bg-white flex-wrap gap-2">
                 <span className="fw-semibold">{activePlan.name || `Plan ${activePlan.id}`}</span>
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 flex-wrap">
                   {editingPlanId === activePlan.id ? (
                     <>
                       <Button variant="outline-secondary" size="sm" onClick={cancelEdit} disabled={saving}>Annuleer</Button>
@@ -339,6 +339,7 @@ export default function PlansPage() {
                         {/* Meal dropdown */}
                         <Form.Select
                           size="sm"
+                          className="fluid-sm"
                           style={{ maxWidth: 200 }}
                           value={day.meal_id ?? ""}
                           onChange={(e) => {
