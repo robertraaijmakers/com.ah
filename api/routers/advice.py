@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from database import get_db
 from models import BuyAdvice
-from services.advice import generate_buy_advice
+from services.advice import ADVICE_TYPE, generate_buy_advice
 
 router = APIRouter(prefix="/advice", tags=["advice"])
 
@@ -42,7 +42,10 @@ class BuyAdviceOut(BaseModel):
 async def list_advice(db: AsyncSession = Depends(get_db)):
     # Price alerts stay fresh without a scheduler: refresh when the newest advice is over 12h old.
     last = (await db.execute(select(func.max(BuyAdvice.generated_at)))).scalar_one_or_none()
-    if last is None or datetime.now(timezone.utc) - last > timedelta(hours=12):
+    has_old_engine_rows = (await db.execute(
+        select(func.count()).select_from(BuyAdvice).where(BuyAdvice.dismissed == False, BuyAdvice.advice_type != ADVICE_TYPE)  # noqa: E712
+    )).scalar_one() > 0
+    if last is None or has_old_engine_rows or datetime.now(timezone.utc) - last > timedelta(hours=12):
         await generate_buy_advice(db)
 
     result = await db.execute(
@@ -51,17 +54,18 @@ async def list_advice(db: AsyncSession = Depends(get_db)):
         .where(BuyAdvice.dismissed == False)
     )
     items = list(result.scalars().all())
+    # How often the household bought this product or any other pack size of the same family
     counts = {
-        r.product_id: r.n
+        r.fam: r.n
         for r in await db.execute(text(
-            "SELECT product_id, COUNT(DISTINCT order_id) AS n FROM order_items "
-            "WHERE product_id IS NOT NULL GROUP BY product_id"
+            "SELECT COALESCE(p.product_group_name, 'p' || p.id) AS fam, COUNT(DISTINCT oi.order_id) AS n "
+            "FROM order_items oi JOIN products p ON p.id = oi.product_id GROUP BY 1"
         ))
     }
     out = []
     for a in items:
         o = BuyAdviceOut.model_validate(a)
-        o.times_ordered = int(counts.get(a.product_id, 0))
+        o.times_ordered = int(counts.get(a.product.product_group_name or f"p{a.product_id}", 0))
         out.append(o)
     # Products you buy often first, then biggest saving
     out.sort(key=lambda o: (-(o.times_ordered > 0), -float(o.savings_pct or 0)))

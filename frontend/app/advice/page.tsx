@@ -48,7 +48,7 @@ export default function AdvicePage() {
       {advice?.length === 0 && (
         <Alert variant="info">
           <Alert.Heading className="h6">Geen prijsalerts</Alert.Heading>
-          <p className="mb-0 small">Meer prijsdata nodig (min. 5 snapshots per product over 90 dagen).</p>
+          <p className="mb-0 small">Alleen producten die je regelmatig koopt, en alleen als een aanbieding per kilo/liter/stuk echt minstens 10% goedkoper is dan de normale beste prijs (inclusief andere verpakkingsgroottes).</p>
         </Alert>
       )}
 
@@ -82,7 +82,7 @@ export default function AdvicePage() {
                   <div className="d-flex align-items-center gap-2 mt-1">
                     <span className="h5 text-success mb-0">€{Number(a.current_price).toFixed(2)}</span>
                     {a.avg_price_90d && (
-                      <small className="text-muted">gem. €{Number(a.avg_price_90d).toFixed(2)}</small>
+                      <small className="text-muted">normaal €{Number(a.avg_price_90d).toFixed(2)}</small>
                     )}
                     {a.savings_pct && (
                       <Badge bg="success">-{Math.round(Number(a.savings_pct))}%</Badge>
