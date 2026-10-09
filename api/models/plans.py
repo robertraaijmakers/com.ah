@@ -22,7 +22,7 @@ class MealPlan(Base):
         order_by="MealPlanDay.date",
         cascade="all, delete-orphan",
     )
-    shopping_lists: Mapped[list["ShoppingList"]] = relationship(back_populates="plan")
+    shopping_lists: Mapped[list["ShoppingList"]] = relationship(back_populates="plan", cascade="all, delete-orphan")
 
 
 class MealPlanDay(Base):

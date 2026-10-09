@@ -12,14 +12,14 @@ const mainLinks = [
   { href: "/plans", label: "Plannen" },
   { href: "/shopping", label: "Boodschappen" },
   { href: "/pantry", label: "Voorraad" },
-  { href: "/advice", label: "Tips" },
+  { href: "/meals", label: "Recepten" },
+  { href: "/products", label: "Producten" },
+  { href: "/advice", label: "Prijsalerts" },
   { href: "/analytics", label: "Analytics" },
 ];
 
 const settingsLinks = [
-  { href: "/products", label: "Producten" },
   { href: "/family", label: "Familie" },
-  { href: "/meals", label: "Recepten" },
   { href: "/settings", label: "Instellingen" },
 ];
 
@@ -41,13 +41,13 @@ export default function AppNav() {
                 key={l.href}
                 as={Link}
                 href={l.href}
-                className={`nav-link-ah px-2 py-1 mx-0 ${path === l.href ? "active" : ""}`}
+                className={`nav-link-ah px-2 py-1 mx-0 ${path === l.href || (l.href !== "/" && path.startsWith(l.href + "/")) ? "active" : ""}`}
               >
                 {l.label}
               </NavLink>
             ))}
             <NavDropdown
-              title="Instellingen"
+              title="Beheer"
               id="settings-dropdown"
               className={`nav-link-ah ${settingsActive ? "active" : ""}`}
             >

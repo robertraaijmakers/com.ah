@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from database import get_db
-from models import Meal, MealIngredient, MealRating, MealHistory, Product, ProductSnapshot
+from models import Meal, MealIngredient, MealRating, MealHistory, PantryItem, Product, ProductSnapshot
 from services import ollama as ollama_svc
 
 router = APIRouter(prefix="/meals", tags=["meals"])
@@ -316,6 +316,14 @@ async def create_meal(body: MealIn, db: AsyncSession = Depends(get_db)):
     return _build_meal_out(meal)
 
 
+@router.get("/categories", response_model=list[str])
+async def list_meal_categories(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Meal.category).where(Meal.category.isnot(None)).distinct().order_by(Meal.category)
+    )
+    return [r[0] for r in result.all()]
+
+
 @router.get("/{meal_id}", response_model=MealOut)
 async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await _load_meal_with_products(meal_id, db)
@@ -413,14 +421,6 @@ async def delete_ingredient(meal_id: int, ingredient_id: int, db: AsyncSession =
         raise HTTPException(404, "Ingredient not found")
     await db.delete(ing)
     await db.commit()
-
-
-@router.get("/categories", response_model=list[str])
-async def list_meal_categories(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Meal.category).where(Meal.category.isnot(None)).distinct().order_by(Meal.category)
-    )
-    return [r[0] for r in result.all()]
 
 
 @router.patch("/{meal_id}/ingredients/{ingredient_id}/link", response_model=IngredientOut)
@@ -803,5 +803,30 @@ async def log_cooked(
         raise HTTPException(404, "Meal not found")
     history = MealHistory(meal_id=meal_id, persons=persons, portions=portions, notes=notes)
     db.add(history)
+
+    # Use up linked ingredients from the pantry (only where the unit matches)
+    ingredients = (await db.execute(
+        select(MealIngredient).where(MealIngredient.meal_id == meal_id, MealIngredient.product_id.isnot(None))
+    )).scalars().all()
+    scale = Decimal(str(portions)) / Decimal(str(meal.portions_default or portions))
+    consumed = 0
+    for ing in ingredients:
+        if ing.optional or not ing.quantity:
+            continue
+        needed = ing.quantity * scale
+        rows = (await db.execute(
+            select(PantryItem)
+            .where(PantryItem.product_id == ing.product_id, PantryItem.unit == (ing.unit or "stuks"))
+            .order_by(PantryItem.expires_at.asc().nullslast())
+        )).scalars().all()
+        for row in rows:
+            if needed <= 0:
+                break
+            used = min(row.quantity, needed)
+            row.quantity -= used
+            needed -= used
+            consumed += 1
+            if row.quantity <= 0:
+                await db.delete(row)
     await db.commit()
-    return {"ok": True}
+    return {"ok": True, "pantry_items_used": consumed}

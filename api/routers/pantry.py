@@ -39,6 +39,30 @@ class PantryItemOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+async def add_or_merge(db: AsyncSession, product_id: int, quantity: Decimal, unit: str, expires_at: date | None) -> PantryItem:
+    """Add to an existing pantry row for the same product+unit instead of creating duplicates."""
+    existing = (await db.execute(
+        select(PantryItem).where(PantryItem.product_id == product_id, PantryItem.unit == unit)
+        .order_by(PantryItem.id).limit(1)
+    )).scalar_one_or_none()
+    if existing:
+        existing.quantity += quantity
+        if expires_at and (existing.expires_at is None or expires_at < existing.expires_at):
+            existing.expires_at = expires_at
+        return existing
+    item = PantryItem(product_id=product_id, quantity=quantity, unit=unit, expires_at=expires_at)
+    db.add(item)
+    await db.flush()
+    return item
+
+
+class PantryItemUpdate(BaseModel):
+    quantity: Decimal | None = None
+    unit: str | None = None
+    expires_at: date | None = None
+    clear_expiry: bool = False
+
+
 @router.get("/", response_model=list[PantryItemOut])
 async def list_pantry(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -59,13 +83,29 @@ async def add_to_pantry(body: PantryItemIn, db: AsyncSession = Depends(get_db)):
     if not expires_at and product.shelf_life_days:
         expires_at = date.today() + timedelta(days=product.shelf_life_days)
 
-    item = PantryItem(
-        product_id=body.product_id,
-        quantity=body.quantity,
-        unit=body.unit,
-        expires_at=expires_at,
+    item = await add_or_merge(db, body.product_id, body.quantity, body.unit, expires_at)
+    await db.commit()
+    result = await db.execute(
+        select(PantryItem).options(selectinload(PantryItem.product)).where(PantryItem.id == item.id)
     )
-    db.add(item)
+    return result.scalar_one()
+
+
+@router.patch("/{item_id}", response_model=PantryItemOut)
+async def update_pantry_item(item_id: int, body: PantryItemUpdate, db: AsyncSession = Depends(get_db)):
+    item = await db.get(PantryItem, item_id)
+    if not item:
+        raise HTTPException(404, "Voorraaditem niet gevonden")
+    if body.quantity is not None:
+        if body.quantity < 0:
+            raise HTTPException(422, "Hoeveelheid mag niet negatief zijn")
+        item.quantity = body.quantity
+    if body.unit:
+        item.unit = body.unit
+    if body.clear_expiry:
+        item.expires_at = None
+    elif body.expires_at is not None:
+        item.expires_at = body.expires_at
     await db.commit()
     result = await db.execute(
         select(PantryItem).options(selectinload(PantryItem.product)).where(PantryItem.id == item.id)

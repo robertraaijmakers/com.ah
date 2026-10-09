@@ -69,7 +69,7 @@ async def generate_buy_advice(db: AsyncSession) -> int:
 
         if savings_pct >= 15 or latest.is_bonus:
             advice_type = "on_sale"
-            message = f"Currently {savings_pct:.0f}% below 90-day average (€{avg_price:.2f}). Good time to stock up."
+            message = f"Nu {max(savings_pct, Decimal(0)):.0f}% onder het gemiddelde van de afgelopen 90 dagen (€{avg_price:.2f}). Goed moment om in te slaan."
         else:
             continue
 

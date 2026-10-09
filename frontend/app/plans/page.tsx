@@ -234,6 +234,17 @@ export default function PlansPage() {
     }
   }
 
+  async function deletePlan(plan: MealPlan) {
+    if (!confirm(`"${plan.name || `Plan ${plan.id}`}" en bijbehorende boodschappenlijsten verwijderen?`)) return;
+    try {
+      await api.delete(`/plans/${plan.id}`);
+      setSelectedPlanId(null);
+      await mutate(PLANS_KEY);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Verwijderen mislukt");
+    }
+  }
+
   async function generateShoppingList(planId: number) {
     try {
       const list = await api.post<{ id: number }>(`/shopping/generate/${planId}`);
@@ -445,6 +456,7 @@ export default function PlansPage() {
                   ) : (
                     <>
                       <Button variant="outline-secondary" size="sm" onClick={() => startEdit(activePlan)}>Bewerken</Button>
+                      <Button variant="outline-danger" size="sm" onClick={() => deletePlan(activePlan)}>Verwijderen</Button>
                       <Button variant="success" size="sm" onClick={() => generateShoppingList(activePlan.id)}>
                         Boodschappenlijst genereren
                       </Button>

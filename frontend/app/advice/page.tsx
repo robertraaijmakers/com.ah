@@ -28,7 +28,7 @@ export default function AdvicePage() {
   async function runEngine() {
     try {
       const result = await api.post<{ created: number }>("/advice/run");
-      showToast(`${result.created} nieuwe tips gevonden`, "success");
+      showToast(`${result.created} nieuwe prijsalerts gevonden`, "success");
       mutate(KEY);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Engine mislukt");
@@ -38,8 +38,8 @@ export default function AdvicePage() {
   return (
     <>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h3 mb-0">Kooptips</h1>
-        <Button className="btn-ah" onClick={runEngine}>Tips vernieuwen</Button>
+        <h1 className="h3 mb-0">Prijsalerts</h1>
+        <Button className="btn-ah" onClick={runEngine}>Nu controleren</Button>
       </div>
 
       {error && <Alert variant="danger">Kon tips niet laden: {error.message}</Alert>}
@@ -47,7 +47,7 @@ export default function AdvicePage() {
 
       {advice?.length === 0 && (
         <Alert variant="info">
-          <Alert.Heading className="h6">Geen actieve kooptips</Alert.Heading>
+          <Alert.Heading className="h6">Geen prijsalerts</Alert.Heading>
           <p className="mb-0 small">Meer prijsdata nodig (min. 5 snapshots per product over 90 dagen).</p>
         </Alert>
       )}
@@ -60,7 +60,7 @@ export default function AdvicePage() {
                 {a.product.image_url && (
                   <img
                     src={a.product.image_url}
-                    alt=""
+                    alt={a.product.name}
                     width={64}
                     height={64}
                     style={{ objectFit: "contain", borderRadius: 4, flexShrink: 0 }}
@@ -68,12 +68,13 @@ export default function AdvicePage() {
                 )}
                 <div className="flex-grow-1">
                   <div className="d-flex justify-content-between align-items-start">
-                    <span className="fw-semibold">{a.product.name}</span>
+                    <span className="fw-semibold">{a.product.name}{a.times_ordered > 0 && <Badge bg="light" text="dark" className="ms-2 fw-normal border">{a.times_ordered}× gekocht</Badge>}</span>
                     <Button
                       variant="link"
                       size="sm"
                       className="text-muted p-0 ms-2 lh-1"
                       onClick={() => dismiss(a.id)}
+                      aria-label="Alert verbergen"
                     >
                       ✕
                     </Button>

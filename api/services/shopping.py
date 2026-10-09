@@ -100,9 +100,9 @@ async def _get_latest_snapshot(db: AsyncSession, product_id: int) -> ProductSnap
 def _build_reasoning(from_pantry: Decimal, is_bonus: bool, price: Decimal | None) -> str:
     parts = []
     if from_pantry > 0:
-        parts.append(f"{from_pantry} from pantry")
+        parts.append(f"{from_pantry:g} uit voorraad")
     if is_bonus:
-        parts.append("bonus price")
+        parts.append("bonusprijs")
     if price:
         parts.append(f"€{price:.2f}")
     return " · ".join(parts) if parts else ""

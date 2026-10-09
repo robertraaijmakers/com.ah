@@ -1,13 +1,47 @@
 const BASE = "/api";
 
+const STATUS_MESSAGES: Record<number, string> = {
+  404: "Niet gevonden",
+  422: "Ongeldige invoer",
+  500: "Serverfout, probeer het later opnieuw",
+  502: "De server is tijdelijk niet bereikbaar",
+  503: "Dienst niet beschikbaar",
+};
+
+/** Quantity without pointless decimals: 2 -> "2", 0.5 -> "0,5", 1.25 -> "1,25" */
+export function fmtQty(v: number | string): string {
+  return Number(Number(v).toFixed(2)).toLocaleString("nl-NL", { maximumFractionDigits: 2 });
+}
+
+export function fmtEur(v: number | string): string {
+  return Number(v).toLocaleString("nl-NL", { style: "currency", currency: "EUR" });
+}
+
+/** "2026-10-09" -> "vr 9 okt" (parsed at noon to avoid timezone shifts) */
+export function fmtDate(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** Whole days from today until the given ISO date (negative = already past) */
+export function daysUntil(iso: string): number {
+  const d = new Date(iso + "T12:00:00");
+  const t = new Date(); t.setHours(12, 0, 0, 0);
+  return Math.round((d.getTime() - t.getTime()) / 86400000);
+}
+
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const resp = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASE}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    });
+  } catch {
+    throw new Error("Kan de server niet bereiken. Draait de applicatie nog?");
+  }
   if (!resp.ok) {
     const text = await resp.text();
-    let message = `HTTP ${resp.status}`;
+    let message = STATUS_MESSAGES[resp.status] ?? `Er ging iets mis (HTTP ${resp.status})`;
     try {
       const json = JSON.parse(text);
       if (typeof json.detail === "string") message = json.detail;
@@ -224,6 +258,7 @@ export interface ShoppingListItem {
   is_bonus: boolean;
   is_checked: boolean;
   reasoning: string | null;
+  category: string | null;
 }
 
 export interface BuyAdvice {
@@ -237,4 +272,5 @@ export interface BuyAdvice {
   message: string | null;
   generated_at: string;
   expires_at: string | null;
+  times_ordered: number;
 }

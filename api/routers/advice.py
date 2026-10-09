@@ -1,7 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from datetime import timedelta, timezone
+from sqlalchemy import select, text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
@@ -32,19 +33,39 @@ class BuyAdviceOut(BaseModel):
     message: str | None
     generated_at: datetime
     expires_at: datetime | None
+    times_ordered: int = 0
 
     model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=list[BuyAdviceOut])
 async def list_advice(db: AsyncSession = Depends(get_db)):
+    # Price alerts stay fresh without a scheduler: refresh when the newest advice is over 12h old.
+    last = (await db.execute(select(func.max(BuyAdvice.generated_at)))).scalar_one_or_none()
+    if last is None or datetime.now(timezone.utc) - last > timedelta(hours=12):
+        await generate_buy_advice(db)
+
     result = await db.execute(
         select(BuyAdvice)
         .options(selectinload(BuyAdvice.product))
         .where(BuyAdvice.dismissed == False)
-        .order_by(BuyAdvice.savings_pct.desc().nullslast())
     )
-    return result.scalars().all()
+    items = list(result.scalars().all())
+    counts = {
+        r.product_id: r.n
+        for r in await db.execute(text(
+            "SELECT product_id, COUNT(DISTINCT order_id) AS n FROM order_items "
+            "WHERE product_id IS NOT NULL GROUP BY product_id"
+        ))
+    }
+    out = []
+    for a in items:
+        o = BuyAdviceOut.model_validate(a)
+        o.times_ordered = int(counts.get(a.product_id, 0))
+        out.append(o)
+    # Products you buy often first, then biggest saving
+    out.sort(key=lambda o: (-(o.times_ordered > 0), -float(o.savings_pct or 0)))
+    return out
 
 
 @router.post("/{advice_id}/dismiss", status_code=204)
