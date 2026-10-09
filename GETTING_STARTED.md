@@ -33,6 +33,14 @@ cp .env.example .env
 docker compose up -d
 ```
 
+Or, in one step (rebuilds the images, restarts changed containers and waits until everything responds):
+
+```bash
+npm run dev          # also: npm run dev:logs | dev:stop | dev:down
+```
+
+Your database is kept between runs (`dev:down` removes containers, not the `postgres_data` volume).
+
 Services:
 - Frontend: http://localhost:3000 (or http://<mac-ip>:3000 from other devices)
 - API: http://localhost:8000
