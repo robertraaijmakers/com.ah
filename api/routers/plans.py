@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from database import get_db
-from models import MealPlan, MealPlanDay, Meal
+from models import MealPlan, MealPlanDay, Meal, MealIngredient, ShoppingList
+from services.costs import latest_snapshots, cost_meal
 from services.planning import generate_plan
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -120,6 +121,71 @@ async def generate(body: GeneratePlanRequest, db: AsyncSession = Depends(get_db)
 
     await db.commit()
     return _plan_to_out(await _load_plan(db, plan.id))
+
+
+class PlanDayCost(BaseModel):
+    day_id: int
+    date: date
+    meal_name: str | None
+    portions: int
+    cost: Decimal
+    unpriced: int
+    is_leftovers: bool
+
+
+class PlanCost(BaseModel):
+    plan_id: int
+    total: Decimal
+    per_portion: Decimal | None
+    per_day: list[PlanDayCost]
+    unpriced: int
+    budget_eur: Decimal | None
+    over_budget: bool | None
+    shopping_total: Decimal | None  # whole packs on the latest generated shopping list
+
+
+@router.get("/{plan_id}/cost", response_model=PlanCost)
+async def plan_cost(plan_id: int, db: AsyncSession = Depends(get_db)):
+    plan = await _load_plan(db, plan_id)
+    meal_ids = {d.meal_id for d in plan.plan_days if d.meal_id}
+    meals = {}
+    if meal_ids:
+        rows = await db.execute(
+            select(Meal).options(selectinload(Meal.ingredients).selectinload(MealIngredient.product))
+            .where(Meal.id.in_(meal_ids))
+        )
+        meals = {m.id: m for m in rows.scalars().all()}
+    snaps = await latest_snapshots(db, {i.product_id for m in meals.values() for i in m.ingredients if i.product_id})
+
+    per_day: list[PlanDayCost] = []
+    total = Decimal(0)
+    unpriced = 0
+    portions_total = 0
+    for d in plan.plan_days:
+        cost, un = Decimal(0), 0
+        meal = meals.get(d.meal_id) if d.meal_id else None
+        if meal and not d.is_leftovers:
+            mc = cost_meal(meal, d.portions, snaps, with_lines=False)
+            cost, un = mc.total, mc.unpriced
+            portions_total += d.portions
+        total += cost
+        unpriced += un
+        per_day.append(PlanDayCost(
+            day_id=d.id, date=d.date, meal_name=meal.name if meal else None,
+            portions=d.portions, cost=cost, unpriced=un, is_leftovers=d.is_leftovers,
+        ))
+    total = round(total, 2)
+    shopping_total = (await db.execute(
+        select(ShoppingList.total_estimated).where(ShoppingList.plan_id == plan_id)
+        .order_by(ShoppingList.generated_at.desc(), ShoppingList.id.desc()).limit(1)
+    )).scalar_one_or_none()
+    return PlanCost(
+        plan_id=plan_id, total=total,
+        per_portion=round(total / portions_total, 2) if portions_total else None,
+        per_day=per_day, unpriced=unpriced, budget_eur=plan.budget_eur,
+        over_budget=(total > plan.budget_eur) if plan.budget_eur else None,
+        shopping_total=shopping_total,
+    )
 
 
 @router.get("/{plan_id}", response_model=MealPlanOut)

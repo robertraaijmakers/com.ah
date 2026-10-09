@@ -6,7 +6,7 @@ import Button from "react-bootstrap/Button";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import Spinner from "react-bootstrap/Spinner";
-import { api, type Meal, type FamilyMember } from "@/lib/api";
+import { api, type Meal, type FamilyMember, type MealCost } from "@/lib/api";
 import { FAMILY_KEY, MEALS_KEY } from "@/lib/meals";
 import { MealCard } from "@/components/meals/MealCard";
 import { ImportMealModal } from "@/components/meals/ImportMealModal";
@@ -17,6 +17,7 @@ export default function MealsPage() {
     MEALS_KEY, () => api.get<Meal[]>(MEALS_KEY)
   );
   const { data: members } = useSWR(FAMILY_KEY, () => api.get<FamilyMember[]>(FAMILY_KEY));
+  const { data: costs } = useSWR("/meals/costs", (u: string) => api.get<Record<number, MealCost>>(u));
   const [showImport, setShowImport] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -85,6 +86,7 @@ export default function MealsPage() {
             <MealCard
               meal={m}
               members={members || []}
+              cost={costs?.[m.id]}
               onUpdated={updateMeal}
               onDeleted={() => removeMeal(m.id)}
             />

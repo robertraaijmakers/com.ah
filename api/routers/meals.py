@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from database import get_db
 from models import Meal, MealIngredient, MealRating, MealHistory, PantryItem, Product, ProductSnapshot
 from services import ollama as ollama_svc
+from services.costs import MealCost, cost_meal, latest_snapshots
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
@@ -316,6 +317,17 @@ async def create_meal(body: MealIn, db: AsyncSession = Depends(get_db)):
     return _build_meal_out(meal)
 
 
+@router.get("/costs", response_model=dict[int, MealCost])
+async def all_meal_costs(db: AsyncSession = Depends(get_db)):
+    """Pro-rata ingredient cost for every meal at its default portions (no per-line detail)."""
+    meals = (await db.execute(
+        select(Meal).options(selectinload(Meal.ingredients).selectinload(MealIngredient.product))
+    )).scalars().all()
+    ids = {i.product_id for m in meals for i in m.ingredients if i.product_id}
+    snaps = await latest_snapshots(db, ids)
+    return {m.id: cost_meal(m, None, snaps, with_lines=False) for m in meals}
+
+
 @router.get("/categories", response_model=list[str])
 async def list_meal_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -330,6 +342,17 @@ async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     if not meal:
         raise HTTPException(404, "Meal not found")
     return _build_meal_out(meal)
+
+
+@router.get("/{meal_id}/cost", response_model=MealCost)
+async def meal_cost(meal_id: int, portions: int | None = None, db: AsyncSession = Depends(get_db)):
+    meal = (await db.execute(
+        select(Meal).options(selectinload(Meal.ingredients).selectinload(MealIngredient.product)).where(Meal.id == meal_id)
+    )).scalar_one_or_none()
+    if not meal:
+        raise HTTPException(404, "Recept niet gevonden")
+    snaps = await latest_snapshots(db, {i.product_id for i in meal.ingredients if i.product_id})
+    return cost_meal(meal, portions, snaps)
 
 
 @router.put("/{meal_id}", response_model=MealOut)

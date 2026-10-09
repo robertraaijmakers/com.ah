@@ -261,6 +261,48 @@ export interface ShoppingListItem {
   category: string | null;
 }
 
+export interface CostLine {
+  ingredient_name: string;
+  quantity: number | null;
+  unit: string | null;
+  product_name: string | null;
+  cost: number | null;
+  is_bonus: boolean;
+  note: string | null;
+}
+
+export interface MealCost {
+  meal_id: number;
+  meal_name: string;
+  portions: number;
+  total: number;
+  per_portion: number | null;
+  priced: number;
+  unpriced: number;
+  lines: CostLine[];
+}
+
+export interface PlanDayCost {
+  day_id: number;
+  date: string;
+  meal_name: string | null;
+  portions: number;
+  cost: number;
+  unpriced: number;
+  is_leftovers: boolean;
+}
+
+export interface PlanCost {
+  plan_id: number;
+  total: number;
+  per_portion: number | null;
+  per_day: PlanDayCost[];
+  unpriced: number;
+  budget_eur: number | null;
+  over_budget: boolean | null;
+  shopping_total: number | null;
+}
+
 export interface BuyAdvice {
   id: number;
   product_id: number;

@@ -10,9 +10,10 @@ import Form from "react-bootstrap/Form";
 import ListGroup from "react-bootstrap/ListGroup";
 import Row from "react-bootstrap/Row";
 import Spinner from "react-bootstrap/Spinner";
-import { api, type MealPlan, type MealPlanDay, type FamilyMember, type Meal } from "@/lib/api";
+import { api, fmtEur, type PlanCost, type MealPlan, type MealPlanDay, type FamilyMember, type Meal } from "@/lib/api";
 import { useToast } from "@/lib/toast";
 import { PLANS_KEY, TYPE_COLOR, WEEKDAYS_NL, sortMembers } from "@/lib/plans";
+import { PlanCostSummary } from "@/components/plans/PlanCostSummary";
 import { MemberChip } from "@/components/plans/MemberChip";
 import { NewPlanForm } from "@/components/plans/NewPlanForm";
 
@@ -91,6 +92,14 @@ export default function PlansPage() {
   }
 
   const activePlan = plans?.find((p) => p.id === (selectedPlanId ?? plans[0]?.id));
+
+  // Key includes the days' meals/portions so the cost refreshes when the plan is edited
+  const costSig = activePlan?.plan_days.map((d) => `${d.id}:${d.meal_id ?? ""}:${d.portions}:${d.is_leftovers}`).join(",");
+  const { data: planCost } = useSWR(
+    activePlan ? [`/plans/${activePlan.id}/cost`, costSig, activePlan.budget_eur] : null,
+    ([url]: [string, ...unknown[]]) => api.get<PlanCost>(url)
+  );
+  const dayCost = new Map((planCost?.per_day ?? []).map((d) => [d.day_id, d]));
 
   async function deletePlan(plan: MealPlan) {
     if (!confirm(`"${plan.name || `Plan ${plan.id}`}" en bijbehorende boodschappenlijsten verwijderen?`)) return;
@@ -210,6 +219,8 @@ export default function PlansPage() {
                 </div>
               </Card.Header>
 
+              <PlanCostSummary cost={planCost} />
+
               {/* Edit mode panel */}
               {editingPlanId === activePlan.id && members && (
                 <div className="p-3 border-bottom bg-light">
@@ -320,6 +331,10 @@ export default function PlansPage() {
                             <Badge bg="secondary" className="ms-1 fw-normal" style={{ fontSize: "0.6rem" }}>restjes</Badge>
                           )}
                         </span>
+
+                        {dayCost.get(day.id) && !day.is_leftovers && day.meal_id && (
+                          <span className="small text-muted text-nowrap">≈ {fmtEur(dayCost.get(day.id)!.cost)}</span>
+                        )}
 
                         {/* Meal dropdown */}
                         <Form.Select

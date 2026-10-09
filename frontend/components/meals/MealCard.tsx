@@ -5,7 +5,8 @@ import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
 import Form from "react-bootstrap/Form";
-import { api, type Meal, type FamilyMember } from "@/lib/api";
+import { MealCostModal } from "@/components/meals/MealCostModal";
+import { api, fmtEur, type MealCost, type Meal, type FamilyMember } from "@/lib/api";
 import { useToast } from "@/lib/toast";
 import { MEALS_KEY, fmt, formatQty } from "@/lib/meals";
 import { Stars } from "@/components/meals/Stars";
@@ -13,14 +14,16 @@ import { EditMealModal } from "@/components/meals/EditMealModal";
 import { ImportMealModal } from "@/components/meals/ImportMealModal";
 
 
-export function MealCard({ meal, members, onUpdated, onDeleted }: {
+export function MealCard({ meal, members, cost, onUpdated, onDeleted }: {
   meal: Meal;
+  cost?: MealCost;
   members: FamilyMember[];
   onUpdated: (updated: Meal) => void;
   onDeleted: () => void;
 }) {
   const { showToast } = useToast();
   const [showEdit, setShowEdit] = useState(false);
+  const [showCost, setShowCost] = useState(false);
   const [showRate, setShowRate] = useState(false);
   const [ratingMember, setRatingMember] = useState(members[0]?.id ?? 0);
   const [rating, setRating] = useState(3);
@@ -54,6 +57,7 @@ export function MealCard({ meal, members, onUpdated, onDeleted }: {
 
   return (
     <>
+      {showCost && <MealCostModal mealId={meal.id} mealName={meal.name} onClose={() => setShowCost(false)} />}
       <Card className="h-100 shadow-sm" style={{ cursor: "default" }}>
         <Card.Body className="d-flex flex-column p-3">
           <div className="d-flex justify-content-between align-items-start mb-1">
@@ -85,9 +89,18 @@ export function MealCard({ meal, members, onUpdated, onDeleted }: {
           <div className="small text-muted mb-2">
             {meal.ingredients.length} ingrediënten
             {meal.portions_default > 1 && ` · ${meal.portions_default} personen`}
-            {meal.estimated_price && ` · ≈ €${Number(meal.estimated_price).toFixed(2)}`}
             {meal.nutrition?.energy_kcal != null && ` · ${fmt(meal.nutrition.energy_kcal / Math.max(1, meal.portions_default))} kcal/p`}
           </div>
+
+          {cost && cost.priced > 0 && (
+            <button
+              className="btn btn-link p-0 text-start small mb-2 text-decoration-none"
+              onClick={() => setShowCost(true)}
+              title="Bekijk kostenspecificatie"
+            >
+              ≈ {fmtEur(cost.total)} <span className="text-muted">({cost.per_portion != null ? `${fmtEur(cost.per_portion)} p.p.` : ""}{cost.unpriced > 0 ? ` · ${cost.unpriced} onbekend` : ""})</span>
+            </button>
+          )}
 
           {meal.ingredients.length > 0 && (
             <ul className="list-unstyled mb-2" style={{ fontSize: "0.8rem" }}>
